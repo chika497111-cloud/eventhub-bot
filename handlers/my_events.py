@@ -52,11 +52,25 @@ async def show_my_event_detail(callback: CallbackQuery) -> None:
 
     reg = await db.get_user_registration(event_id, user_id)
     reg_status = ""
+    checkin_line = ""
     if reg:
         if reg["status"] == "registered":
             reg_status = "\n\n✅ <i>Вы зарегистрированы</i>"
         elif reg["status"] == "waitlist":
             reg_status = "\n\n⏳ <i>Вы в листе ожидания</i>"
+        elif reg["status"] == "attended":
+            reg_status = "\n\n🎉 <i>Вы посетили это событие</i>"
+
+        if reg.get("checkin_code") and reg["status"] in ("registered",):
+            checkin_line = f"\n🔑 Код для чекина: <code>{reg['checkin_code']}</code>"
+
+    # Ticket type info
+    ticket_line = ""
+    if reg and reg.get("ticket_type_id"):
+        tt = await db.get_ticket_type(reg["ticket_type_id"])
+        if tt:
+            price_text = f"{tt['price']}₽" if tt["price"] > 0 else "Бесплатно"
+            ticket_line = f"\n🎫 Билет: {tt['name']} ({price_text})"
 
     reg_count = await db.get_registration_count(event_id)
     text = (
@@ -64,7 +78,9 @@ async def show_my_event_detail(callback: CallbackQuery) -> None:
         f"📅 {event['date']}  🕐 {event['time']}\n"
         f"📍 {event['location']}\n"
         f"👥 {reg_count}/{event['max_participants']}"
+        f"{ticket_line}"
         f"{reg_status}"
+        f"{checkin_line}"
     )
 
     kb = my_event_detail_kb(event_id)
